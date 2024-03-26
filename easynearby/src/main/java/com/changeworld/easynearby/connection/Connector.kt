@@ -12,7 +12,7 @@ interface Connector {
         endpoint: String,
         name: String,
         isIncomingConnection: Boolean,
-        authValidator: (String) -> Boolean
+        authValidator: suspend (String) -> Boolean
     ): Result<Connection>
 
     /**

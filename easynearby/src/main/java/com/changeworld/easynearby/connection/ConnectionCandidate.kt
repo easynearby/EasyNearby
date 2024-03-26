@@ -33,13 +33,15 @@ data class ConnectionCandidate(
      * @param authValidator optional auth validator. If not provided, all connections are accepted,
      * otherwise the caller will be able to choose whether to accept or reject the connection.
      */
-    suspend fun connect(authValidator: (String) -> Boolean = { true }): Result<Connection> {
+    suspend fun connect(authValidator: suspend (String) -> Boolean = { true }): Result<Connection> {
         logD(TAG, "Connecting to $id")
-        return if (authenticationDigits?.let(authValidator) != false) {
-            connectionManager.connect(id, name, isIncomingConnection, authValidator)
-        } else {
-            logD(TAG, "Connection rejected")
-            Result.failure(RuntimeException("Connection rejected because authValidator returned false"))
-        }
+        return authenticationDigits?.let {
+            if (authValidator(it)) {
+                connectionManager.connect(id, name, isIncomingConnection, authValidator)
+            } else {
+                logD(TAG, "Connection rejected")
+                Result.failure(RuntimeException("Connection rejected because authValidator returned false"))
+            }
+        } ?: connectionManager.connect(id, name, isIncomingConnection, authValidator)
     }
 }

@@ -60,7 +60,7 @@ internal class AndroidConnector(
         endpoint: String,
         name: String,
         isIncomingConnection: Boolean,
-        authValidator: (String) -> Boolean
+        authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return if (isIncomingConnection) {
             acceptConnection(endpoint, name, authValidator)
@@ -104,20 +104,22 @@ internal class AndroidConnector(
                 Log.w(TAG, "Could not find pending connection for ${connectionEvent.endpoint}")
                 return
             }
-            val isAuthenticationValidated =
-                connectionEventsParams.authValidator(connectionEvent.connectionInfo.authenticationDigits)
-            Log.d(
-                TAG,
-                "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
-            )
-            if (isAuthenticationValidated) {
-                acceptOutgoingConnectionRequest(connectionEvent.endpoint)
-            } else {
+            scope.launch {
+                val isAuthenticationValidated =
+                    connectionEventsParams.authValidator(connectionEvent.connectionInfo.authenticationDigits)
                 Log.d(
                     TAG,
-                    "Rejecting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
+                    "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
                 )
-                connectionEventsParams.continuation.resume(Result.failure(RuntimeException("Authentication failed")))
+                if (isAuthenticationValidated) {
+                    acceptOutgoingConnectionRequest(connectionEvent.endpoint)
+                } else {
+                    Log.d(
+                        TAG,
+                        "Rejecting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
+                    )
+                    connectionEventsParams.continuation.resume(Result.failure(RuntimeException("Authentication failed")))
+                }
             }
         }
     }
@@ -145,7 +147,7 @@ internal class AndroidConnector(
     private suspend fun connectToEndpoint(
         endpoint: String,
         name: String,
-        authValidator: (String) -> Boolean
+        authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
@@ -168,7 +170,7 @@ internal class AndroidConnector(
     private suspend fun acceptConnection(
         endpoint: String,
         name: String,
-        authValidator: (String) -> Boolean
+        authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
@@ -218,5 +220,5 @@ internal data class PendingConnectionParams(
     val id: String,
     val name: String,
     val continuation: CancellableContinuation<Result<Connection>>,
-    val authValidator: (String) -> Boolean,
+    val authValidator: suspend (String) -> Boolean,
 )
