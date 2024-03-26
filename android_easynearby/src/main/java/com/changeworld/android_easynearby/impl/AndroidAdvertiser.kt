@@ -95,7 +95,7 @@ internal class AndroidAdvertiser(
             val connectionCandidate = ConnectionCandidate(
                 initiated.endpoint,
                 initiated.connectionInfo.endpointName,
-                true
+                initiated.connectionInfo.authenticationDigits
             )
             connectionCandidates[initiated.endpoint] = connectionCandidate
             scope.launch {

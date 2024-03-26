@@ -35,8 +35,9 @@ android {
     }
 
     publishing {
-        singleVariant("release") {
+        singleVariant("release"){
             withSourcesJar()
+            withJavadocJar()
         }
     }
 
@@ -71,11 +72,10 @@ android {
 afterEvaluate {
     publishing {
         publications {
-            create<MavenPublication>("maven") {
+            create<MavenPublication>("release") {
                 groupId = "com.changeworld"
                 artifactId = "android-easynearby"
                 version = "0.0.1"
-
                 from(components["release"])
             }
         }

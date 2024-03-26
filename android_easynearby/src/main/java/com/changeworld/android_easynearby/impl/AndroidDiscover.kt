@@ -29,8 +29,7 @@ internal class AndroidDiscover(
 
     private val discoveredConnectionCandidates = mutableMapOf<String, ConnectionCandidate>()
 
-    private val connectionCandidateMutableSharedFlow =  MutableSharedFlow<ConnectionCandidateEvent>()
-
+    private val connectionCandidateMutableSharedFlow = MutableSharedFlow<ConnectionCandidateEvent>()
 
 
     override suspend fun startDiscovery(deviceInfo: DeviceInfo): Result<Flow<ConnectionCandidateEvent>> {
@@ -64,7 +63,7 @@ internal class AndroidDiscover(
     private val discoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
             Log.d(TAG, "onEndpointFound. endpointId: $endpointId, info: ${info.toReadableString()}")
-            val connectionCandidate = ConnectionCandidate(endpointId, info.endpointName, false)
+            val connectionCandidate = ConnectionCandidate(endpointId, info.endpointName, null)
             discoveredConnectionCandidates[endpointId] = connectionCandidate
             scope.launch {
                 connectionCandidateMutableSharedFlow.emit(

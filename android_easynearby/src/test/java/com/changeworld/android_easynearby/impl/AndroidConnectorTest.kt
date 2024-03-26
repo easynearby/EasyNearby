@@ -51,7 +51,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val job = launch {
-                connector.connect("endpoint", "name", true)
+                connector.connect("endpoint", "name", true, { true })
             }
 
             advanceUntilIdle()
@@ -81,7 +81,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val job = launch {
-                connector.connect("endpoint", "name", false)
+                connector.connect("endpoint", "name", false, { true })
             }
 
             advanceUntilIdle()
@@ -105,7 +105,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true)
+                connector.connect("endpoint", "name", true, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -128,7 +128,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
         }
 
     @Test
-    fun `test connect When connection initiated emited with outgoing connection Then invoke acceptConnection on a client`() =
+    fun `test connect When connection initiated emited with outgoing connection but pending connection not found Then don't invoke acceptConnection on a client`() =
         runTest {
             val testScope = TestScope()
             val connector = AndroidConnector(
@@ -139,7 +139,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
             val fakeTask = FakeTask<Void?>()
             every {
-                connectionsClient.acceptConnection("endpoint",any())
+                connectionsClient.acceptConnection("name", any())
             } returns fakeTask
 
             launch(UnconfinedTestDispatcher()) {
@@ -153,8 +153,100 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
             testScope.advanceUntilIdle()
 
+            verify(inverse = true) {
+                connectionsClient.acceptConnection("name", any())
+            }
+        }
+
+    @Test
+    fun `test connect When connection initiated emitted with outgoing connection and pending connection  found Then invoke acceptConnection on a client`() =
+        runTest {
+            val testScope = TestScope()
+            val connector = AndroidConnector(
+                testScope, connectionsClient, connectionLifecycleCallback, connectionsEventsFlow
+            )
+
+            testScope.advanceUntilIdle()
+
+            val requestEndpointFakeResult = FakeTask<Void?>()
+            every {
+                connectionsClient.requestConnection("name", "endpoint", any())
+            } returns requestEndpointFakeResult
+
+            val acceptConnectionFakeResult = FakeTask<Void?>()
+            every {
+                connectionsClient.acceptConnection("endpoint", any())
+            } returns acceptConnectionFakeResult
+
+
+            val launchJob = launch(UnconfinedTestDispatcher()) {
+                connector.connect("endpoint", "name", false, { true })
+            }
+
+            testScope.advanceUntilIdle()
+            advanceUntilIdle()
+
+            requestEndpointFakeResult.invokeSuccessListener(null)
+
+            launch(UnconfinedTestDispatcher()) {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionInitiated(
+                        "endpoint",
+                        ConnectionInfo("name", "id", false)
+                    )
+                )
+            }
+
+            testScope.advanceUntilIdle()
+
+            acceptConnectionFakeResult.invokeSuccessListener(null)
+
             verify(exactly = 1) {
-                connectionsClient.acceptConnection("endpoint",any())
+                connectionsClient.acceptConnection("endpoint", any())
+            }
+
+            launchJob.cancel()
+        }
+
+    @Test
+    fun `test connect When connection initiated emitted with outgoing connection but authentication declined Then don't invoke acceptConnection on a client and return failure`() =
+        runTest {
+            val testScope = TestScope()
+            val connector = AndroidConnector(
+                testScope, connectionsClient, connectionLifecycleCallback, connectionsEventsFlow
+            )
+
+            testScope.advanceUntilIdle()
+
+            val requestEndpointFakeResult = FakeTask<Void?>()
+            every {
+                connectionsClient.requestConnection("name", "endpoint", any())
+            } returns requestEndpointFakeResult
+
+            val result = async {
+                connector.connect("endpoint", "name", false, { false })
+            }
+
+            testScope.advanceUntilIdle()
+            advanceUntilIdle()
+
+            requestEndpointFakeResult.invokeSuccessListener(null)
+
+            launch(UnconfinedTestDispatcher()) {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionInitiated(
+                        "endpoint",
+                        ConnectionInfo("name", "id", false)
+                    )
+                )
+            }
+
+            testScope.advanceUntilIdle()
+
+            assertThat(result.await().isFailure, equalTo(true))
+
+            verify(inverse = true) {
+                connectionsClient.acceptConnection("endpoint", any())
             }
         }
 
@@ -180,7 +272,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
             testScope.advanceUntilIdle()
 
             verify(inverse = true) {
-                connectionsClient.acceptConnection("endpoint",any())
+                connectionsClient.acceptConnection("endpoint", any())
             }
         }
 
@@ -202,7 +294,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", false)
+                connector.connect("endpoint", "name", false, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -236,7 +328,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true)
+                connector.connect("endpoint", "name", true, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -270,7 +362,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", false)
+                connector.connect("endpoint", "name", false, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -298,7 +390,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true)
+                connector.connect("endpoint", "name", true, { true })
             }
 
             testScope.advanceUntilIdle()

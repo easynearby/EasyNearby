@@ -154,7 +154,7 @@ class AndroidDiscoverTest : AndroidStuffMockedTest() {
             assertThat(resultList.first().type, equalTo(ConnectionEventType.DISCOVERED))
             assertThat(
                 resultList.first().candidate,
-                IsEqual.equalTo(ConnectionCandidate("endpointId", "endpointName", false))
+                IsEqual.equalTo(ConnectionCandidate("endpointId", "endpointName", null))
             )
             collectJob.cancel()
         }
@@ -201,7 +201,7 @@ class AndroidDiscoverTest : AndroidStuffMockedTest() {
             assertThat(resultList[1].type, equalTo(ConnectionEventType.LOST))
             assertThat(
                 resultList[1].candidate,
-                IsEqual.equalTo(ConnectionCandidate("endpointId", "endpointName", false))
+                IsEqual.equalTo(ConnectionCandidate("endpointId", "endpointName", null))
             )
             collectJob.cancel()
         }

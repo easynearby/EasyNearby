@@ -47,14 +47,14 @@ class ConnectionManagerTest {
         val modules = listOf(module { single { connectionManager } })
         IsolatedKoinContext.koin.loadModules(modules)
 
-        val connection = DirectConnection(id,"name", Channel<ByteArray>().receiveAsFlow())
-        coEvery { connector.connect(id, any(), any()) } returns Result.success(connection)
+        val connection = DirectConnection(id, "name", Channel<ByteArray>().receiveAsFlow())
+        coEvery { connector.connect(id, any(), any(), any()) } returns Result.success(connection)
 
-        val result = connectionManager.connect(id, "name", false)
+        val result = connectionManager.connect(id, "name", false, { true })
 
         assertThat(result.isSuccess, equalTo(true))
         assertThat(result.getOrThrow().id, equalTo(connection.id))
-        coVerify(exactly = 1) { connector.connect(id, any(), any()) }
+        coVerify(exactly = 1) { connector.connect(id, any(), any(), any()) }
 
         IsolatedKoinContext.koin.unloadModules(modules)
     }

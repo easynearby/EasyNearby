@@ -34,6 +34,12 @@ abstract class AndroidStuffMockedTest {
                 thirdArg<Throwable?>()?.printStackTrace()
                 1
             }
+
+            every { Log.w(any<String>(), any<String>()) } answers {
+                println("${firstArg<String>()}: ${secondArg<String>()}")
+                thirdArg<Throwable?>()?.printStackTrace()
+                1
+            }
         }
 
         @AfterClass

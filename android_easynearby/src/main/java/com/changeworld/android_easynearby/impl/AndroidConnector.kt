@@ -1,10 +1,10 @@
 package com.changeworld.android_easynearby.impl
 
 import android.util.Log
+import com.changeworld.android_easynearby.logging.AndroidEasyNearby
 import com.changeworld.easynearby.connection.Connection
 import com.changeworld.easynearby.connection.Connector
 import com.changeworld.easynearby.connection.DirectConnection
-import com.changeworld.android_easynearby.logging.AndroidEasyNearby
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.google.android.gms.nearby.connection.Payload
@@ -57,12 +57,15 @@ internal class AndroidConnector(
     }
 
     override suspend fun connect(
-        endpoint: String, name: String, isIncomingConnection: Boolean,
+        endpoint: String,
+        name: String,
+        isIncomingConnection: Boolean,
+        authValidator: (String) -> Boolean
     ): Result<Connection> {
         return if (isIncomingConnection) {
-            acceptConnection(endpoint, name)
+            acceptConnection(endpoint, name, authValidator)
         } else {
-            connectToEndpoint(endpoint, name)
+            connectToEndpoint(endpoint, name, authValidator)
         }
     }
 
@@ -97,8 +100,25 @@ internal class AndroidConnector(
 
     private fun connectionInitiated(connectionEvent: ConnectionEvents.ConnectionInitiated) {
         if (connectionEvent.connectionInfo.isIncomingConnection.not()) {
-            Log.d(TAG, "Accepting outgoing connection from ${connectionEvent.endpoint}")
-            acceptOutgoingConnectionRequest(connectionEvent.endpoint)
+            val connectionEventsParams = pendingConnections[connectionEvent.endpoint] ?: run {
+                Log.w(TAG, "Could not find pending connection for ${connectionEvent.endpoint}")
+                return
+            }
+            val isAuthenticationValidated =
+                connectionEventsParams.authValidator(connectionEvent.connectionInfo.authenticationDigits)
+            Log.d(
+                TAG,
+                "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
+            )
+            if (isAuthenticationValidated) {
+                acceptOutgoingConnectionRequest(connectionEvent.endpoint)
+            } else {
+                Log.d(
+                    TAG,
+                    "Rejecting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
+                )
+                connectionEventsParams.continuation.resume(Result.failure(RuntimeException("Authentication failed")))
+            }
         }
     }
 
@@ -122,12 +142,17 @@ internal class AndroidConnector(
         }
     }
 
-    private suspend fun connectToEndpoint(endpoint: String, name: String): Result<Connection> {
+    private suspend fun connectToEndpoint(
+        endpoint: String,
+        name: String,
+        authValidator: (String) -> Boolean
+    ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
                 pendingConnections.remove(endpoint)
             }
-            pendingConnections[endpoint] = PendingConnectionParams(endpoint, name, continuation)
+            pendingConnections[endpoint] =
+                PendingConnectionParams(endpoint, name, continuation, authValidator)
             connectionsClient.requestConnection(name, endpoint, connectionLifecycleCallback)
                 .addOnSuccessListener {
                     Log.d(TAG, "Requested connection to $endpoint successfully executed")
@@ -140,12 +165,17 @@ internal class AndroidConnector(
     }
 
 
-    private suspend fun acceptConnection(endpoint: String, name: String): Result<Connection> {
+    private suspend fun acceptConnection(
+        endpoint: String,
+        name: String,
+        authValidator: (String) -> Boolean
+    ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
                 pendingConnections.remove(endpoint)
             }
-            pendingConnections[endpoint] = PendingConnectionParams(endpoint, name, continuation)
+            pendingConnections[endpoint] =
+                PendingConnectionParams(endpoint, name, continuation, authValidator)
             connectionsClient.acceptConnection(endpoint, payloadCallback)
                 .addOnSuccessListener {
                     Log.d(TAG, "Accepted connection success")
@@ -187,5 +217,6 @@ internal class AndroidConnector(
 internal data class PendingConnectionParams(
     val id: String,
     val name: String,
-    val continuation: CancellableContinuation<Result<Connection>>
+    val continuation: CancellableContinuation<Result<Connection>>,
+    val authValidator: (String) -> Boolean,
 )

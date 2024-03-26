@@ -6,11 +6,13 @@ interface Connector {
      * @param endpoint remote endpoint
      * @param name name of the remote endpoint
      * @param isIncomingConnection true if connection is incoming, false if the initiator is the current device
+     * @param authValidator that is used to determine whether to accept or reject the connection
      */
     suspend fun connect(
         endpoint: String,
         name: String,
-        isIncomingConnection: Boolean
+        isIncomingConnection: Boolean,
+        authValidator: (String) -> Boolean
     ): Result<Connection>
 
     /**

@@ -36,10 +36,10 @@ class ConnectionCandidateEventTest {
     fun `test Two same devices are equal`() {
         assertThat(
             ConnectionCandidateEvent(
-                ConnectionEventType.DISCOVERED, ConnectionCandidate("id", "name", false)
+                ConnectionEventType.DISCOVERED, ConnectionCandidate("id", "name", null)
             ), equalTo(
                 ConnectionCandidateEvent(
-                    ConnectionEventType.DISCOVERED, ConnectionCandidate("id", "name", false)
+                    ConnectionEventType.DISCOVERED, ConnectionCandidate("id", "name", null)
                 )
             )
         )

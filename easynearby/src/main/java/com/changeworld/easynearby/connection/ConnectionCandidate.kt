@@ -11,8 +11,16 @@ import com.changeworld.easynearby.loggging.extensions.logD
 data class ConnectionCandidate(
     val id: String,
     val name: String,
-    val isIncomingConnection: Boolean
+    /**
+     * In case of incoming connections, this data is already available. If the connection is outgoing the data will be available later
+     */
+    internal val authenticationDigits: String?,
 ) {
+    /**
+     * Authentication digits are only available for incoming connections
+     */
+    val isIncomingConnection: Boolean = authenticationDigits != null
+
     private val connectionManager: ConnectionManager by lazy {
         IsolatedKoinContext.koin.get()
     }
@@ -22,9 +30,16 @@ data class ConnectionCandidate(
 
     /**
      * Tries to connect to the remote endpoint and returns a [Connection] if result is successful
+     * @param authValidator optional auth validator. If not provided, all connections are accepted,
+     * otherwise the caller will be able to choose whether to accept or reject the connection.
      */
-    suspend fun connect(): Result<Connection> {
+    suspend fun connect(authValidator: (String) -> Boolean = { true }): Result<Connection> {
         logD(TAG, "Connecting to $id")
-        return connectionManager.connect(id, name, isIncomingConnection)
+        return if (authenticationDigits?.let(authValidator) != false) {
+            connectionManager.connect(id, name, isIncomingConnection, authValidator)
+        } else {
+            logD(TAG, "Connection rejected")
+            Result.failure(RuntimeException("Connection rejected because authValidator returned false"))
+        }
     }
 }
