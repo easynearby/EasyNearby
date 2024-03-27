@@ -15,6 +15,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.toList
@@ -244,5 +245,52 @@ class AndroidDiscoverTest : AndroidStuffMockedTest() {
 
             collectJob.cancel()
         }
+
+    @Test
+    fun `test startDiscovery When same endpoint found more than once then emit connection candidate only once`() = runTest {
+        val fakeTask = FakeTask<Void?>()
+        val callbackSlot = slot<EndpointDiscoveryCallback>()
+        every {
+            connectionsClient.startDiscovery(any(), capture(callbackSlot), any())
+        } returns fakeTask
+
+
+        val testScope = TestScope()
+        val discover = AndroidDiscover(testScope, connectionsClient)
+
+        val result = async {
+            discover.startDiscovery(DeviceInfo("name", "id", ConnectionStrategy.STAR))
+        }
+
+        // run async job
+        advanceUntilIdle()
+
+        fakeTask.invokeSuccessListener(null)
+
+        val flow = result.await().getOrThrow()
+
+        val resultList = mutableListOf<ConnectionCandidateEvent>()
+        val collectJob = launch(UnconfinedTestDispatcher()) {
+            flow.toList(resultList)
+        }
+
+        callbackSlot.captured.onEndpointFound(
+            "endpointId",
+            DiscoveredEndpointInfo("serviceId", "endpointName")
+        )
+        testScope.advanceUntilIdle()
+        callbackSlot.captured.onEndpointFound(
+            "endpointId",
+            DiscoveredEndpointInfo("serviceId", "endpointName")
+        )
+        testScope.advanceUntilIdle()
+        assertThat(resultList.size, equalTo(1))
+        assertThat(resultList[0].type, equalTo(ConnectionEventType.DISCOVERED))
+        assertThat(
+            resultList[0].candidate,
+            IsEqual.equalTo(ConnectionCandidate("endpointId", "endpointName", null))
+        )
+        collectJob.cancel()
+    }
 
 }

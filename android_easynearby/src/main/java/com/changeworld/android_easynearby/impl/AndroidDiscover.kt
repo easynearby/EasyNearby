@@ -1,13 +1,13 @@
 package com.changeworld.android_easynearby.impl
 
 import android.util.Log
+import com.changeworld.android_easynearby.logging.AndroidEasyNearby
+import com.changeworld.android_easynearby.toStrategy
 import com.changeworld.easynearby.advertising.DeviceInfo
 import com.changeworld.easynearby.connection.ConnectionCandidate
 import com.changeworld.easynearby.connection.ConnectionCandidateEvent
 import com.changeworld.easynearby.connection.ConnectionEventType
 import com.changeworld.easynearby.discovery.Discover
-import com.changeworld.android_easynearby.logging.AndroidEasyNearby
-import com.changeworld.android_easynearby.toStrategy
 import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.DiscoveryOptions
@@ -64,14 +64,16 @@ internal class AndroidDiscover(
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
             Log.d(TAG, "onEndpointFound. endpointId: $endpointId, info: ${info.toReadableString()}")
             val connectionCandidate = ConnectionCandidate(endpointId, info.endpointName, null)
-            discoveredConnectionCandidates[endpointId] = connectionCandidate
-            scope.launch {
-                connectionCandidateMutableSharedFlow.emit(
-                    ConnectionCandidateEvent(
-                        ConnectionEventType.DISCOVERED,
-                        connectionCandidate
+            if (discoveredConnectionCandidates.containsKey(endpointId).not()) {
+                discoveredConnectionCandidates[endpointId] = connectionCandidate
+                scope.launch {
+                    connectionCandidateMutableSharedFlow.emit(
+                        ConnectionCandidateEvent(
+                            ConnectionEventType.DISCOVERED,
+                            connectionCandidate
+                        )
                     )
-                )
+                }
             }
         }
 
