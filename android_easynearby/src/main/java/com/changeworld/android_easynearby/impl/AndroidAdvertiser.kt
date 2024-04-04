@@ -2,12 +2,12 @@ package com.changeworld.android_easynearby.impl
 
 
 import android.util.Log
+import com.changeworld.android_easynearby.toStrategy
 import com.changeworld.easynearby.advertising.Advertiser
 import com.changeworld.easynearby.advertising.DeviceInfo
 import com.changeworld.easynearby.connection.ConnectionCandidate
 import com.changeworld.easynearby.connection.ConnectionCandidateEvent
 import com.changeworld.easynearby.connection.ConnectionEventType
-import com.changeworld.android_easynearby.toStrategy
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionsClient
@@ -38,7 +38,7 @@ internal class AndroidAdvertiser(
                     }
 
                     is ConnectionEvents.Disconnected -> {
-                        // Not intrested
+                        disconnected(connectionEvent)
                     }
                 }
             }
@@ -63,7 +63,7 @@ internal class AndroidAdvertiser(
                 connectionLifecycleCallback,
                 advertisingOptions.build()
             ).addOnSuccessListener {
-                Log.d(TAG, "Success to start advertising")
+                Log.d(TAG, "Success to start advertising with $deviceInfo")
                 continuation.resume(null)
             }.addOnFailureListener {
                 Log.e(TAG, "Failed to start advertising", it)
@@ -78,8 +78,8 @@ internal class AndroidAdvertiser(
     }
 
     private fun connectionResult(connectionResult: ConnectionEvents.ConnectionResult) {
-        val connectionCandidate = connectionCandidates.remove(connectionResult.endpoint)
         if (connectionResult.result.status.isSuccess.not()) {
+            val connectionCandidate = connectionCandidates.remove(connectionResult.endpoint)
             connectionCandidate?.let {
                 scope.launch {
                     connectionCandidateMutableSharedFlow.emit(
@@ -97,17 +97,37 @@ internal class AndroidAdvertiser(
                 initiated.connectionInfo.endpointName,
                 initiated.connectionInfo.authenticationDigits
             )
-            connectionCandidates[initiated.endpoint] = connectionCandidate
-            scope.launch {
-                connectionCandidateMutableSharedFlow.emit(
-                    ConnectionCandidateEvent(
-                        ConnectionEventType.DISCOVERED,
-                        connectionCandidate
+
+            if (connectionCandidates.containsKey(initiated.endpoint).not()) {
+                connectionCandidates[initiated.endpoint] = connectionCandidate
+                scope.launch {
+                    connectionCandidateMutableSharedFlow.emit(
+                        ConnectionCandidateEvent(
+                            ConnectionEventType.DISCOVERED,
+                            connectionCandidate
+                        )
                     )
+                }
+            } else {
+                Log.d(
+                    TAG,
+                    "connection $connectionCandidate initiated connection but has been already discovered"
                 )
             }
         }
     }
+
+    private fun disconnected(disconnectedEvent: ConnectionEvents.Disconnected) {
+        val connectionCandidate = connectionCandidates.remove(disconnectedEvent.endpoint)
+        connectionCandidate?.let {
+            scope.launch {
+                connectionCandidateMutableSharedFlow.emit(
+                    ConnectionCandidateEvent(ConnectionEventType.LOST, connectionCandidate)
+                )
+            }
+        }
+    }
+
 
     override suspend fun stopAdvertising() {
         connectionsClient.stopAdvertising()

@@ -14,6 +14,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Offternet POC"
-include(":app")
+include(":demo")
 include(":easynearby")
 include(":android_easynearby")

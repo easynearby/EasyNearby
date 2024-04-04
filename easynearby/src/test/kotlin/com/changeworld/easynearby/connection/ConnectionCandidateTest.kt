@@ -37,15 +37,22 @@ class ConnectionCandidateTest {
 
     @Test
     fun `test connect When invoked Then pass call to connectionManager`() = runTest {
-        val connectionCandidate = ConnectionCandidate("id", "name", null)
-        coEvery { connectionManager.connect("id", "name", false, { true }) } returns Result.success(
+        val connectionCandidate = ConnectionCandidate("id", "remoteName", null)
+        coEvery {
+            connectionManager.connect(
+                "id",
+                "myName",
+                "remoteName",
+                false
+            ) { true }
+        } returns Result.success(
             mockk()
         )
 
-        val result = connectionCandidate.connect({ true })
+        val result = connectionCandidate.connect("myName") { true }
 
         assertThat(result.isSuccess, equalTo(true))
-        coVerify(exactly = 1) { connectionManager.connect("id", "name", false, any()) }
+        coVerify(exactly = 1) { connectionManager.connect("id", "myName", "remoteName", false, any()) }
     }
 
     @Test
@@ -53,7 +60,7 @@ class ConnectionCandidateTest {
         runTest {
             val connectionCandidate = ConnectionCandidate("id", "name", 1234.toString())
 
-            val result = connectionCandidate.connect { false }
+            val result = connectionCandidate.connect("myName") { false }
             assertThat(result.isFailure, equalTo(true))
         }
 }

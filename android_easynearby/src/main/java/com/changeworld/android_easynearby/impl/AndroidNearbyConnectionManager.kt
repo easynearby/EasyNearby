@@ -78,7 +78,7 @@ internal class AndroidNearbyConnectionManager(internal val context: Context) {
     }
 
     private fun ConnectionInfo.toReadableString(): String {
-        return "name : $endpointName, isIncomingConnection : $isIncomingConnection"
+        return "name : $endpointName, info : ${endpointInfo.contentToString()}, isIncomingConnection : $isIncomingConnection"
     }
 
     private fun ConnectionResolution.toReadableString(): String {

@@ -51,7 +51,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val job = launch {
-                connector.connect("endpoint", "name", true, { true })
+                connector.connect("endpoint", "name", "remoteName", true, { true })
             }
 
             advanceUntilIdle()
@@ -81,7 +81,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val job = launch {
-                connector.connect("endpoint", "name", false, { true })
+                connector.connect("endpoint", "name", "remoteName", false, { true })
             }
 
             advanceUntilIdle()
@@ -105,7 +105,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true, { true })
+                connector.connect("endpoint", "name", "remoteName", true, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -180,7 +180,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val launchJob = launch(UnconfinedTestDispatcher()) {
-                connector.connect("endpoint", "name", false, { true })
+                connector.connect("endpoint", "name", "remoteName", false, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -219,12 +219,15 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
             testScope.advanceUntilIdle()
 
             val requestEndpointFakeResult = FakeTask<Void?>()
+            val rejectFakeResult = FakeTask<Void?>()
             every {
                 connectionsClient.requestConnection("name", "endpoint", any())
             } returns requestEndpointFakeResult
 
+            every { connectionsClient.rejectConnection("endpoint") } returns rejectFakeResult
+
             val result = async {
-                connector.connect("endpoint", "name", false, { false })
+                connector.connect("endpoint", "name", "remoteName", false, { false })
             }
 
             testScope.advanceUntilIdle()
@@ -237,6 +240,18 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
                     ConnectionEvents.ConnectionInitiated(
                         "endpoint",
                         ConnectionInfo("name", "id", false)
+                    )
+                )
+            }
+
+            testScope.advanceUntilIdle()
+            rejectFakeResult.invokeSuccessListener(null)
+
+            launch(UnconfinedTestDispatcher()) {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionResult(
+                        "endpoint",
+                        ConnectionResolution(Status.RESULT_CANCELED)
                     )
                 )
             }
@@ -294,7 +309,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", false, { true })
+                connector.connect("endpoint", "name", "remoteName", false, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -328,7 +343,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true, { true })
+                connector.connect("endpoint", "name", "remoteName", true, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -362,7 +377,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", false, { true })
+                connector.connect("endpoint", "name", "remoteName", false, { true })
             }
 
             testScope.advanceUntilIdle()
@@ -390,7 +405,7 @@ class AndroidConnectorTest : AndroidStuffMockedTest() {
 
 
             val result = async {
-                connector.connect("endpoint", "name", true, { true })
+                connector.connect("endpoint", "name", "remoteName", true, { true })
             }
 
             testScope.advanceUntilIdle()

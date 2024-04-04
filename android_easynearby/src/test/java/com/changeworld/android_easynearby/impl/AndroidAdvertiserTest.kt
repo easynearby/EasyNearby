@@ -1,12 +1,12 @@
 package com.changeworld.android_easynearby.impl
 
 import com.changeworld.AndroidStuffMockedTest
+import com.changeworld.android_easynearby.utils.FakeTask
 import com.changeworld.easynearby.ConnectionStrategy
 import com.changeworld.easynearby.advertising.DeviceInfo
 import com.changeworld.easynearby.connection.ConnectionCandidate
 import com.changeworld.easynearby.connection.ConnectionCandidateEvent
 import com.changeworld.easynearby.connection.ConnectionEventType
-import com.changeworld.android_easynearby.utils.FakeTask
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
@@ -125,7 +125,7 @@ class AndroidAdvertiserTest : AndroidStuffMockedTest() {
 
 
     @Test
-    fun `test startAdvertising When ConnectionInitiated with incoming connection Then emit discovered connection candidate `() =
+    fun `test startAdvertising When connection initiated with incoming connection Then emit discovered connection candidate `() =
         runTest {
             val testScope = TestScope()
 
@@ -185,7 +185,7 @@ class AndroidAdvertiserTest : AndroidStuffMockedTest() {
         }
 
     @Test
-    fun `test startAdvertising When ConnectionInitiated with outgoing connection Then don't emit discovered connection candidate `() =
+    fun `test startAdvertising When connection initiated with outgoing connection Then don't emit discovered connection candidate `() =
         runTest {
             val testScope = TestScope()
 
@@ -240,7 +240,7 @@ class AndroidAdvertiserTest : AndroidStuffMockedTest() {
         }
 
     @Test
-    fun `test startAdvertising When ConnectionInitiated with incoming connection and then ConnectionResult with not success emited Then emit discovered and then Lost connection candidate `() =
+    fun `test startAdvertising When connection initiated with incoming connection and then ConnectionResult with not success emitted Then emit discovered and then Lost connection candidate `() =
         runTest {
             val testScope = TestScope()
 
@@ -356,6 +356,140 @@ class AndroidAdvertiserTest : AndroidStuffMockedTest() {
         assertThat(resultList.size, equalTo(0))
         collectJob.cancel()
     }
+
+    @Test
+    fun `test startAdvertising When same connection initiated more that once with incoming connection Then emit discovered connection candidate only once`() =
+        runTest {
+            val testScope = TestScope()
+
+            val advertiser = AndroidAdvertiser(
+                testScope, connectionsClient, connectionLifecycleCallback, connectionsEventsFlow
+            )
+
+            // subscribe to connections events flow
+            testScope.advanceUntilIdle()
+
+            val fakeTask = FakeTask<Void?>()
+
+            every {
+                connectionsClient.startAdvertising(any<String>(), any(), any(), any())
+            } returns fakeTask
+
+            val result = async {
+                advertiser.startAdvertising(DeviceInfo("name", "id", ConnectionStrategy.STAR))
+            }
+
+            // run async job
+            advanceUntilIdle()
+
+            fakeTask.invokeSuccessListener(null)
+
+            val flow = result.await().getOrThrow()
+
+            val resultList = mutableListOf<ConnectionCandidateEvent>()
+            val collectJob = launch(UnconfinedTestDispatcher()) {
+                flow.toList(resultList)
+            }
+
+            val connectionInfo = ConnectionInfo("endpointName", "token", true)
+
+
+            // send connection initiated event
+            launch {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionInitiated(
+                        "endpoint", connectionInfo
+                    )
+                )
+            }
+
+            launch {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionInitiated(
+                        "endpoint", connectionInfo
+                    )
+                )
+            }
+
+            // run emit flow
+            advanceUntilIdle()
+
+            // wait for emitting connection candidate from advertisser
+            testScope.advanceUntilIdle()
+            assertThat(resultList.size, equalTo(1))
+            assertThat(resultList.first().type, equalTo(ConnectionEventType.DISCOVERED))
+            assertThat(
+                resultList.first().candidate,
+                equalTo(ConnectionCandidate("endpoint", "endpointName", "6031"))
+            )
+            collectJob.cancel()
+        }
+
+
+    @Test
+    fun `test startAdvertising When connected and then disconnected Then emit discovered and lost `() =
+        runTest {
+            val testScope = TestScope()
+
+            val advertiser = AndroidAdvertiser(
+                testScope, connectionsClient, connectionLifecycleCallback, connectionsEventsFlow
+            )
+
+            // subscribe to connections events flow
+            testScope.advanceUntilIdle()
+
+            val fakeTask = FakeTask<Void?>()
+
+            every {
+                connectionsClient.startAdvertising(any<String>(), any(), any(), any())
+            } returns fakeTask
+
+            val result = async {
+                advertiser.startAdvertising(DeviceInfo("name", "id", ConnectionStrategy.STAR))
+            }
+
+            // run async job
+            advanceUntilIdle()
+
+            fakeTask.invokeSuccessListener(null)
+
+            val flow = result.await().getOrThrow()
+
+            val resultList = mutableListOf<ConnectionCandidateEvent>()
+            val collectJob = launch(UnconfinedTestDispatcher()) {
+                flow.toList(resultList)
+            }
+
+
+            launch {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.ConnectionInitiated(
+                        "endpoint",
+                        ConnectionInfo("endpointName", "token", true)
+                    )
+                )
+            }
+            // send connection initiated event
+            launch {
+                connectionsEventsFlow.emit(
+                    ConnectionEvents.Disconnected("endpoint")
+                )
+            }
+
+            // run emit flow
+            advanceUntilIdle()
+
+            val expectedConnectionCandidate = ConnectionCandidate("endpoint", "endpointName", "6031")
+
+            // wait for emitting connection candidate from advertisser
+            testScope.advanceUntilIdle()
+            assertThat(resultList.size, equalTo(2))
+            assertThat(resultList[0].type, equalTo(ConnectionEventType.DISCOVERED))
+            assertThat(resultList[0].candidate, equalTo(expectedConnectionCandidate))
+            assertThat(resultList[1].type, equalTo(ConnectionEventType.LOST))
+            assertThat(resultList[1].candidate, equalTo(expectedConnectionCandidate))
+            collectJob.cancel()
+        }
 
 
 }

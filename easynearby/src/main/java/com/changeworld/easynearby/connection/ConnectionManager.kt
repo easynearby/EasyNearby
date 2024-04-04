@@ -14,12 +14,17 @@ internal class ConnectionManager(
         EasyNearby::class.java.simpleName + " - " + ConnectionManager::class.java.simpleName
 
     suspend fun connect(
-        id: String, name: String, isIncomingConnection: Boolean, authValidator: suspend (String) -> Boolean
+        id: String, localDevicename: String, remoteDeviceName:String, isIncomingConnection: Boolean, authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
-        logD(TAG, "Connecting to $id. Incoming: $isIncomingConnection. Name: $name")
-        return connector.connect(id, name, isIncomingConnection, authValidator).map {
+        logD(TAG, "Connecting to $id. Incoming: $isIncomingConnection. Name: $localDevicename")
+        return connector.connect(id, localDevicename, remoteDeviceName, isIncomingConnection, authValidator).map {
             GzipConnection(it)
         }
+    }
+
+    suspend fun rejectConnection(id: String) {
+        logD(TAG, "Rejecting connection to $id")
+        connector.rejectConnection(id)
     }
 
     suspend fun disconnect(id: String) {

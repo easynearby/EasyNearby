@@ -58,14 +58,15 @@ internal class AndroidConnector(
 
     override suspend fun connect(
         endpoint: String,
-        name: String,
+        localDeviceName: String,
+        remoteDeviceName: String,
         isIncomingConnection: Boolean,
         authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return if (isIncomingConnection) {
-            acceptConnection(endpoint, name, authValidator)
+            acceptConnection(endpoint,remoteDeviceName, authValidator)
         } else {
-            connectToEndpoint(endpoint, name, authValidator)
+            connectToEndpoint(endpoint, localDeviceName, remoteDeviceName,authValidator)
         }
     }
 
@@ -75,6 +76,14 @@ internal class AndroidConnector(
             mapOfSendChannels.remove(endpoint)?.also {
                 it.close()
             }
+        }
+    }
+
+    override suspend fun rejectConnection(endpoint: String) {
+        connectionsClient.rejectConnection(endpoint).addOnSuccessListener {
+            Log.d(TAG, "Rejected connection from $endpoint")
+        }.addOnFailureListener {
+            Log.w(TAG, "Failed to reject connection from $endpoint", it)
         }
     }
 
@@ -107,27 +116,27 @@ internal class AndroidConnector(
             scope.launch {
                 val isAuthenticationValidated =
                     connectionEventsParams.authValidator(connectionEvent.connectionInfo.authenticationDigits)
-                Log.d(
-                    TAG,
-                    "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
-                )
                 if (isAuthenticationValidated) {
+                    Log.d(
+                        TAG,
+                        "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
+                    )
                     acceptOutgoingConnectionRequest(connectionEvent.endpoint)
                 } else {
                     Log.d(
                         TAG,
                         "Rejecting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
                     )
-                    connectionEventsParams.continuation.resume(Result.failure(RuntimeException("Authentication failed")))
+                    rejectConnection(connectionEvent.endpoint)
                 }
             }
         }
     }
 
     private fun connectionResult(connectionEvent: ConnectionEvents.ConnectionResult) {
-        if (connectionEvent.result.status.isSuccess) {
-            Log.d(TAG, "Success to connect to ${connectionEvent.endpoint}")
-            pendingConnections.remove(connectionEvent.endpoint)?.let {
+        pendingConnections.remove(connectionEvent.endpoint)?.let {
+            if (connectionEvent.result.status.isSuccess) {
+                Log.d(TAG, "Success to connect to ${connectionEvent.endpoint}")
                 Log.d(TAG, "Initializing receive channel for ${connectionEvent.endpoint}")
                 val sendChannel = Channel<ByteArray>()
                 mapOfSendChannels[connectionEvent.endpoint] = sendChannel
@@ -140,13 +149,17 @@ internal class AndroidConnector(
                         )
                     )
                 )
+            } else {
+                Log.d(TAG, "Failed to connect to ${connectionEvent.endpoint} with ${connectionEvent.result.status.statusMessage}")
+                it.continuation.resume(Result.failure(RuntimeException("Failed to connect. ${connectionEvent.result.status.statusMessage}")))
             }
         }
     }
 
     private suspend fun connectToEndpoint(
         endpoint: String,
-        name: String,
+        localDeviceName: String,
+        remoteDeviceName: String,
         authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
@@ -154,8 +167,8 @@ internal class AndroidConnector(
                 pendingConnections.remove(endpoint)
             }
             pendingConnections[endpoint] =
-                PendingConnectionParams(endpoint, name, continuation, authValidator)
-            connectionsClient.requestConnection(name, endpoint, connectionLifecycleCallback)
+                PendingConnectionParams(endpoint, remoteDeviceName, continuation, authValidator)
+            connectionsClient.requestConnection(localDeviceName, endpoint, connectionLifecycleCallback)
                 .addOnSuccessListener {
                     Log.d(TAG, "Requested connection to $endpoint successfully executed")
                 }.addOnFailureListener {
@@ -169,7 +182,7 @@ internal class AndroidConnector(
 
     private suspend fun acceptConnection(
         endpoint: String,
-        name: String,
+        remoteDeviceName: String,
         authValidator: suspend (String) -> Boolean
     ): Result<Connection> {
         return suspendCancellableCoroutine { continuation ->
@@ -177,7 +190,7 @@ internal class AndroidConnector(
                 pendingConnections.remove(endpoint)
             }
             pendingConnections[endpoint] =
-                PendingConnectionParams(endpoint, name, continuation, authValidator)
+                PendingConnectionParams(endpoint, remoteDeviceName, continuation, authValidator)
             connectionsClient.acceptConnection(endpoint, payloadCallback)
                 .addOnSuccessListener {
                     Log.d(TAG, "Accepted connection success")
