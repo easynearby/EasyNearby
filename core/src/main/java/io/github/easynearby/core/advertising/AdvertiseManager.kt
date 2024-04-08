@@ -24,6 +24,12 @@ class AdvertiseManager(
 
     private val isAdvertising = AtomicBoolean(false)
 
+    /**
+     * Starts advertising a local endpoint with the specified [deviceInfo].
+     * If advertising already started returns [IllegalStateException]
+     * If permissions not granted returns [PermissionsNotGrantedException]
+     * Otherwise returns [Flow] of [ConnectionCandidateEvent]
+     */
     suspend fun startAdvertising(deviceInfo: DeviceInfo): Result<Flow<ConnectionCandidateEvent>> {
         if (isAdvertising.getAndSet(true)) {
             return Result.failure(IllegalStateException("Already advertising"))
@@ -40,6 +46,9 @@ class AdvertiseManager(
         }
     }
 
+    /**
+     * Stops advertising
+     */
     suspend fun stopAdvertising() {
         if (isAdvertising.getAndSet(false)) {
             logD(TAG, "Stopping advertising")

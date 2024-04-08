@@ -24,6 +24,12 @@ class DiscoveryManager(
 
     private val isDiscovering = AtomicBoolean(false)
 
+    /**
+     * Starts discovery for remote endpoints with the specified [deviceInfo].
+     * If discovery already started returns [IllegalStateException]
+     * If permissions not granted returns [PermissionsNotGrantedException]
+     * Otherwise returns [Flow] of [ConnectionCandidateEvent]
+     */
     suspend fun startDiscovery(deviceInfo: DeviceInfo): Result<Flow<ConnectionCandidateEvent>> {
         if (isDiscovering.getAndSet(true)) {
             return Result.failure(IllegalStateException("Already Discovering"))
@@ -40,6 +46,9 @@ class DiscoveryManager(
         }
     }
 
+    /**
+     * Stops discovery
+     */
     fun stopDiscovery() {
         if (isDiscovering.getAndSet(false)) {
             logD(TAG, "Stopping discovery")

@@ -17,6 +17,9 @@ object EasyNearby {
     private val TAG = EasyNearby::class.java.simpleName
 
 
+    /**
+     * Should be called by an implementation library that declares [EasyNearbyInitializerFactory]
+     */
     @Throws(EasyNearbyNotInitializedException::class)
     fun initialize() {
         try {
@@ -46,6 +49,9 @@ object EasyNearby {
         }
     }
 
+    /**
+     * Gets [AdvertiseManager]. If [EasyNearby.initialize] has not been called yet, then throws [EasyNearbyNotInitializedException]
+     */
     @Throws(EasyNearbyNotInitializedException::class)
     fun getAdvertiseManager(): AdvertiseManager {
         if (!isInitialized.get()) {
@@ -54,6 +60,9 @@ object EasyNearby {
         return IsolatedKoinContext.koin.get()
     }
 
+    /**
+     * Gets [DiscoveryManager]. If [EasyNearby.initialize] has not been called yet, then throws [EasyNearbyNotInitializedException]
+     */
     @Throws(EasyNearbyNotInitializedException::class)
     fun getDiscoverManager(): DiscoveryManager {
         if (!isInitialized.get()) {
