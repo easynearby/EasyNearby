@@ -26,6 +26,11 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 afterEvaluate {
     publishing {
         publications {
