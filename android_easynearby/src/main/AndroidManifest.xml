@@ -9,7 +9,7 @@
             tools:node="merge">
             <!-- This entry makes ExampleLoggerInitializer discoverable. -->
             <meta-data
-                android:name="com.changeworld.android_easynearby.AndroidEasyNearbyInitializer"
+                android:name="io.github.easynearby.android.AndroidEasyNearbyInitializer"
                 android:value="androidx.startup" />
         </provider>
     </application>

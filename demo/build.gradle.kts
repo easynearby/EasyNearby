@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.changeworld.demo"
+    namespace = "io.github.easynearby.demo"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.changeworld.demo"
+        applicationId = "io.github.easynearby.demo"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
@@ -42,7 +42,7 @@ android {
 dependencies {
     implementation("androidx.activity:activity:1.8.0")
     runtimeOnly(project(":android_easynearby"))
-    implementation(project(":easynearby"))
+    implementation(project(":core"))
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation ("io.github.nikartm:image-support:2.0.0")
     implementation("com.google.android.gms:play-services-nearby:19.1.0")

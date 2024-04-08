@@ -13,7 +13,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Offternet POC"
+rootProject.name = "EasyNearby"
 include(":demo")
-include(":easynearby")
+include(":core")
 include(":android_easynearby")

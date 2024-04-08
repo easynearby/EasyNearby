@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.changeworld.android_easynearby"
+    namespace = "io.github.easynearby.android"
     compileSdk = 34
 
     defaultConfig {
@@ -45,7 +45,7 @@ android {
         implementation("androidx.startup:startup-runtime:1.1.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
         implementation("com.google.android.gms:play-services-nearby:18.5.0")
-        api(project(":easynearby"))
+        api(project(":core"))
         implementation("androidx.core:core-ktx:1.9.0")
         implementation("androidx.appcompat:appcompat:1.6.1")
         implementation("com.google.android.material:material:1.11.0")
@@ -73,8 +73,8 @@ afterEvaluate {
     publishing {
         publications {
             create<MavenPublication>("release") {
-                groupId = "com.changeworld"
-                artifactId = "android-easynearby"
+                groupId = "io.github.easynearby"
+                artifactId = "android"
                 version = "0.0.1"
                 from(components["release"])
             }
