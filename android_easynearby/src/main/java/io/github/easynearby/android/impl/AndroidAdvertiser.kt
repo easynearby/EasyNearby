@@ -1,7 +1,6 @@
 package io.github.easynearby.android.impl
 
 
-import android.util.Log
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionsClient
@@ -16,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import timber.log.Timber
 import kotlin.coroutines.resume
 
 internal class AndroidAdvertiser(
@@ -63,10 +63,10 @@ internal class AndroidAdvertiser(
                 connectionLifecycleCallback,
                 advertisingOptions.build()
             ).addOnSuccessListener {
-                Log.d(TAG, "Success to start advertising with $deviceInfo")
+                Timber.tag(TAG).d("Success to start advertising with %s", deviceInfo)
                 continuation.resume(null)
             }.addOnFailureListener {
-                Log.e(TAG, "Failed to start advertising", it)
+                Timber.tag(TAG).e(it, "Failed to start advertising")
                 continuation.resume(it)
             }
         }
@@ -109,10 +109,11 @@ internal class AndroidAdvertiser(
                     )
                 }
             } else {
-                Log.d(
-                    TAG,
-                    "connection $connectionCandidate initiated connection but has been already discovered"
-                )
+                Timber.tag(TAG)
+                    .d(
+                        "connection %s initiated connection but has been already discovered",
+                        connectionCandidate
+                    )
             }
         }
     }

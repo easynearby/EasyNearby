@@ -1,6 +1,5 @@
 package io.github.easynearby.android.impl
 
-import android.util.Log
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.google.android.gms.nearby.connection.Payload
@@ -18,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import timber.log.Timber
 import kotlin.coroutines.resume
 
 internal class AndroidConnector(
@@ -72,7 +72,7 @@ internal class AndroidConnector(
 
     override suspend fun disconnect(endpoint: String) {
         connectionsClient.disconnectFromEndpoint(endpoint).also {
-            Log.d(TAG, "Disconnected from $endpoint")
+            Timber.tag(TAG).d("Disconnected from %s", endpoint)
             mapOfSendChannels.remove(endpoint)?.also {
                 it.close()
             }
@@ -81,21 +81,21 @@ internal class AndroidConnector(
 
     override suspend fun rejectConnection(endpoint: String) {
         connectionsClient.rejectConnection(endpoint).addOnSuccessListener {
-            Log.d(TAG, "Rejected connection from $endpoint")
+            Timber.tag(TAG).d("Rejected connection from %s", endpoint)
         }.addOnFailureListener {
-            Log.w(TAG, "Failed to reject connection from $endpoint", it)
+            Timber.tag(TAG).w(it, "Failed to reject connection from %s", endpoint)
         }
     }
 
     override suspend fun sendPayload(endpoint: String, payload: ByteArray): Result<Unit> {
         return suspendCancellableCoroutine { continuation ->
-            Log.d(TAG, "Sending payload $payload to $endpoint")
+            Timber.tag(TAG).d("Sending payload %s to %s", payload, endpoint)
             connectionsClient.sendPayload(endpoint, Payload.fromBytes(payload))
                 .addOnSuccessListener {
-                    Log.d(TAG, "Sent payload $payload to $endpoint")
+                    Timber.tag(TAG).d("Sent payload %s to %s", payload, endpoint)
                     continuation.resume(Result.success(Unit))
                 }.addOnFailureListener {
-                    Log.w(TAG, "Failed to send payload $payload to $endpoint", it)
+                    Timber.tag(TAG).w(it, "Failed to send payload %s to %s ", payload, endpoint)
                     continuation.resume(Result.failure(it))
                 }
         }
@@ -103,30 +103,30 @@ internal class AndroidConnector(
 
     private fun disconnected(connectionEvent: ConnectionEvents.Disconnected) {
         mapOfSendChannels.remove(connectionEvent.endpoint)?.close()?.also {
-            Log.d(TAG, "Disconnected from ${connectionEvent.endpoint}")
+            Timber.tag(TAG).d("Disconnected from %s", connectionEvent.endpoint)
         }
     }
 
     private fun connectionInitiated(connectionEvent: ConnectionEvents.ConnectionInitiated) {
         if (connectionEvent.connectionInfo.isIncomingConnection.not()) {
             val connectionEventsParams = pendingConnections[connectionEvent.endpoint] ?: run {
-                Log.w(TAG, "Could not find pending connection for ${connectionEvent.endpoint}")
+                Timber.tag(TAG)
+                    .w("Could not find pending connection for %s", connectionEvent.endpoint)
                 return
             }
             scope.launch {
                 val isAuthenticationValidated =
                     connectionEventsParams.authValidator(connectionEvent.connectionInfo.authenticationDigits)
                 if (isAuthenticationValidated) {
-                    Log.d(
-                        TAG,
-                        "Accepting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
-                    )
+                    Timber.tag(TAG)
+                        .d(
+                            "Accepting outgoing connection from %s",
+                            connectionEvent.endpoint
+                        )
                     acceptOutgoingConnectionRequest(connectionEvent.endpoint)
                 } else {
-                    Log.d(
-                        TAG,
-                        "Rejecting outgoing connection from ${connectionEvent.endpoint}. Validation result: $isAuthenticationValidated"
-                    )
+                    Timber.tag(TAG)
+                        .d("Rejecting outgoing connection from %s", connectionEvent.endpoint)
                     rejectConnection(connectionEvent.endpoint)
                 }
             }
@@ -136,8 +136,8 @@ internal class AndroidConnector(
     private fun connectionResult(connectionEvent: ConnectionEvents.ConnectionResult) {
         pendingConnections.remove(connectionEvent.endpoint)?.let {
             if (connectionEvent.result.status.isSuccess) {
-                Log.d(TAG, "Success to connect to ${connectionEvent.endpoint}")
-                Log.d(TAG, "Initializing receive channel for ${connectionEvent.endpoint}")
+                Timber.tag(TAG).d("Success to connect to %s", connectionEvent.endpoint)
+                Timber.tag(TAG).d("Initializing receive channel for %s", connectionEvent.endpoint)
                 val sendChannel = Channel<ByteArray>()
                 mapOfSendChannels[connectionEvent.endpoint] = sendChannel
                 it.continuation.resume(
@@ -150,10 +150,12 @@ internal class AndroidConnector(
                     )
                 )
             } else {
-                Log.d(
-                    TAG,
-                    "Failed to connect to ${connectionEvent.endpoint} with ${connectionEvent.result.status.statusMessage}"
-                )
+                Timber.tag(TAG)
+                    .d(
+                        "Failed to connect to %s with %s",
+                        connectionEvent.endpoint,
+                        connectionEvent.result.status.statusMessage
+                    )
                 it.continuation.resume(Result.failure(RuntimeException("Failed to connect. ${connectionEvent.result.status.statusMessage}")))
             }
         }
@@ -177,9 +179,10 @@ internal class AndroidConnector(
                 connectionLifecycleCallback
             )
                 .addOnSuccessListener {
-                    Log.d(TAG, "Requested connection to $endpoint successfully executed")
+                    Timber.tag(TAG)
+                        .d("Requested connection to  %s successfully executed", endpoint)
                 }.addOnFailureListener {
-                    Log.w(TAG, "Failed to request connection to $endpoint", it)
+                    Timber.tag(TAG).w(it, "Failed to request connection to %s", endpoint)
                     pendingConnections.remove(endpoint)
                     continuation.resume(Result.failure(it))
                 }
@@ -200,9 +203,9 @@ internal class AndroidConnector(
                 PendingConnectionParams(endpoint, remoteDeviceName, continuation, authValidator)
             connectionsClient.acceptConnection(endpoint, payloadCallback)
                 .addOnSuccessListener {
-                    Log.d(TAG, "Accepted connection success")
+                    Timber.tag(TAG).d("Accepted connection success")
                 }.addOnFailureListener {
-                    Log.w(TAG, "Failed to accept connection", it)
+                    Timber.tag(TAG).w(it, "Failed to accept connection")
                     pendingConnections.remove(endpoint)
                     continuation.resume(Result.failure(it))
                 }
@@ -211,9 +214,9 @@ internal class AndroidConnector(
 
     private fun acceptOutgoingConnectionRequest(endpoint: String) {
         connectionsClient.acceptConnection(endpoint, payloadCallback).addOnSuccessListener {
-            Log.d(TAG, "Accepted outgoing connection successfully executed")
+            Timber.tag(TAG).d("Accepted outgoing connection successfully executed")
         }.addOnFailureListener {
-            Log.w(TAG, "Failed to accept outgoing connection", it)
+            Timber.tag(TAG).w(it, "Failed to accept outgoing connection")
             pendingConnections.remove(endpoint)?.continuation?.resume(Result.failure(it))
         }
     }
@@ -221,7 +224,7 @@ internal class AndroidConnector(
 
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
-            Log.d(TAG, "OnPayloadReceived. endpointId: $endpointId, payload: $payload")
+            Timber.tag(TAG).d("OnPayloadReceived. endpointId: %s, payload %s", endpointId, payload)
             payload.asBytes()?.let { data ->
                 scope.launch {
                     mapOfSendChannels[endpointId]?.send(data)
@@ -231,7 +234,7 @@ internal class AndroidConnector(
         }
 
         override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {
-            Log.d(TAG, "OnPayloadTransferUpdate")
+            Timber.tag(TAG).d("OnPayloadTransferUpdate")
         }
     }
 }

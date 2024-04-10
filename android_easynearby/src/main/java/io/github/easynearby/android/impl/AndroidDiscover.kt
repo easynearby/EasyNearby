@@ -1,6 +1,5 @@
 package io.github.easynearby.android.impl
 
-import android.util.Log
 import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.DiscoveryOptions
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import timber.log.Timber
 import kotlin.coroutines.resume
 
 internal class AndroidDiscover(
@@ -41,10 +41,10 @@ internal class AndroidDiscover(
                 discoveryCallback,
                 discoveryOptions.build()
             ).addOnSuccessListener {
-                Log.d(TAG, "Started discovery with $deviceInfo")
+                Timber.tag(TAG).d("Started discovery with %s", deviceInfo)
                 continuation.resume(null)
             }.addOnFailureListener {
-                Log.w(TAG, "Failed to start discovery with $deviceInfo", it)
+                Timber.tag(TAG).w(it, "Failed to start discovery with %s", deviceInfo)
                 continuation.resume(it)
             }
         }
@@ -62,7 +62,8 @@ internal class AndroidDiscover(
 
     private val discoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            Log.d(TAG, "onEndpointFound. endpointId: $endpointId, info: ${info.toReadableString()}")
+            Timber.tag(TAG)
+                .d("onEndpointFound. endpointId: %s, info %s", endpointId, info.toReadableString())
             val connectionCandidate = ConnectionCandidate(endpointId, info.endpointName, null)
             if (discoveredConnectionCandidates.containsKey(endpointId).not()) {
                 discoveredConnectionCandidates[endpointId] = connectionCandidate
@@ -78,7 +79,7 @@ internal class AndroidDiscover(
         }
 
         override fun onEndpointLost(endpointId: String) {
-            Log.d(TAG, "OnEndpointLost. endpointId: $endpointId")
+            Timber.tag(TAG).d("OnEndpointLost. endpointId: %s", endpointId)
             discoveredConnectionCandidates.remove(endpointId)?.let { connectionCandidate ->
                 scope.launch {
                     connectionCandidateMutableSharedFlow.emit(

@@ -1,7 +1,6 @@
 package io.github.easynearby.android.impl
 
 import android.content.Context
-import android.util.Log
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
@@ -11,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 internal class AndroidNearbyConnectionManager(internal val context: Context) {
     private val scope = CoroutineScope(SupervisorJob())
@@ -41,10 +41,12 @@ internal class AndroidNearbyConnectionManager(internal val context: Context) {
 
     private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
         override fun onConnectionInitiated(endpoint: String, connectionInfo: ConnectionInfo) {
-            Log.d(
-                TAG,
-                "onConnectionInitiated: $endpoint. info: ${connectionInfo.toReadableString()}"
-            )
+            Timber.tag(TAG)
+                .d(
+                    "onConnectionInitiated: %s. info %s",
+                    endpoint,
+                    connectionInfo.toReadableString()
+                )
             scope.launch {
                 connectionEventsMutableFlow.emit(
                     ConnectionEvents.ConnectionInitiated(
@@ -55,10 +57,8 @@ internal class AndroidNearbyConnectionManager(internal val context: Context) {
         }
 
         override fun onConnectionResult(endpoint: String, result: ConnectionResolution) {
-            Log.d(
-                TAG,
-                "onConnectionResult: $endpoint. result: ${result.toReadableString()}"
-            )
+            Timber.tag(TAG)
+                .d("onConnectionResult: %s. result: %s", endpoint, result.toReadableString())
             scope.launch {
                 connectionEventsMutableFlow.emit(
                     ConnectionEvents.ConnectionResult(
@@ -70,7 +70,7 @@ internal class AndroidNearbyConnectionManager(internal val context: Context) {
         }
 
         override fun onDisconnected(endpoint: String) {
-            Log.d(TAG, "onDisconnected: endpoint =  $endpoint")
+            Timber.tag(TAG).d("onDisconnected: endpoint =  %s", endpoint)
             scope.launch {
                 connectionEventsMutableFlow.emit(ConnectionEvents.Disconnected(endpoint))
             }
