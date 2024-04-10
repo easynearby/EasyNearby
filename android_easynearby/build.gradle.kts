@@ -1,7 +1,9 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    `maven-publish`
+    id("com.vanniktech.maven.publish")
 }
 
 android {
@@ -34,13 +36,6 @@ android {
         jvmTarget = "1.8"
     }
 
-    publishing {
-        singleVariant("release"){
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
-
     dependencies {
         implementation("androidx.startup:startup-runtime:1.1.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
@@ -67,21 +62,39 @@ android {
         androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     }
 }
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                groupId = "io.github.easynearby"
-                artifactId = "android"
-                version = "0.0.1"
-                from(components["release"])
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+
+    signAllPublications()
+}
+
+mavenPublishing {
+    coordinates("io.github.easynearby", "android", "0.0.1")
+
+    pom {
+        name.set("Android Nearby library")
+        description.set("Android implementation of Nearby core library")
+        inceptionYear.set("2024")
+        url.set("https://github.com/easynearby/EasyNearby")
+        licenses {
+            license {
+                name.set("GNU GENERAL PUBLIC LICENSE VERSION 3.0")
+                url.set("https://www.gnu.org/licenses/gpl-3.0.html")
+                distribution.set("https://www.gnu.org/licenses/gpl-3.0.html")
             }
         }
-        repositories {
-            maven {
-                name = "myrepo"
-                url = uri("${project.buildDir}/repo")
+        developers {
+            developer {
+                id.set("gusakovgiorgi")
+                name.set("Giorgi Gusakov")
+                url.set("https://github.com/gusakovgiorgi")
             }
+        }
+        scm {
+            url.set("https://github.com/easynearby/EasyNearby")
+            connection.set("scm:git:git://github.com/easynearby/EasyNearby.git")
+            developerConnection.set("scm:git:ssh://git@github.com:easynearby/EasyNearby.git")
         }
     }
 }
