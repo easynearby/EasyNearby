@@ -46,9 +46,6 @@ android {
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
         implementation("com.google.android.gms:play-services-nearby:18.5.0")
         api(project(":core"))
-        implementation("androidx.core:core-ktx:1.9.0")
-        implementation("androidx.appcompat:appcompat:1.6.1")
-        implementation("com.google.android.material:material:1.11.0")
         implementation("com.jakewharton.timber:timber:5.0.1")
 
         // Core library

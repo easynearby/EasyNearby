@@ -53,7 +53,7 @@
 
         <meta-data
             android:name="io.github.easynearby.android.logging"
-            android:value="false" />
+            android:value="true" />
 
     </application>
 
