@@ -6,6 +6,9 @@ EasyNearby is a wrapper around Google's [Nearby Connections API](https://develop
 ## Demo (Youtube)
 [![Demo video on youtube](./assets/youtube_logo.png)](https://www.youtube.com/watch?v=hAqrdB-kCzE)
 
+## API docs
+Api documentation can be found [here](https://easynearby.github.io/)
+
 ## Quick Start
 [Setup](#setup)<br>
 [Permissions](#permissions)<br>
