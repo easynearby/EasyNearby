@@ -70,7 +70,7 @@ mavenPublishing {
 }
 
 mavenPublishing {
-    coordinates("io.github.easynearby", "android", "0.0.1")
+    coordinates("io.github.easynearby", "android", "0.0.2")
 
     pom {
         name.set("Android Nearby library")
