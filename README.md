@@ -4,7 +4,8 @@
 EasyNearby is a wrapper around Google's [Nearby Connections API](https://developers.google.com/nearby/connections/overview)(previously known as Nearby Messages API). 
 
 ## Demo (Youtube)
-[![Demo video on youtube](./assets/youtube_logo.png)](https://www.youtube.com/watch?v=hAqrdB-kCzE)
+<iframe width="560" height="315" src="https://www.youtube.com/embed/hAqrdB-kCzE?si=QoP-uOJ2wbY7aQJ3" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 
 ## API docs
 Api documentation can be found [here](https://easynearby.github.io/)
