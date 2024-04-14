@@ -1,4 +1,7 @@
 import com.vanniktech.maven.publish.SonatypeHost
+import org.jetbrains.dokka.base.DokkaBase
+import org.jetbrains.dokka.base.DokkaBaseConfiguration
+import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     id("java-library")
@@ -62,5 +65,19 @@ mavenPublishing {
             connection.set("scm:git:git://github.com/easynearby/EasyNearby.git")
             developerConnection.set("scm:git:ssh://git@github.com:easynearby/EasyNearby.git")
         }
+    }
+}
+
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.dokka:dokka-base:1.9.20")
+    }
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    pluginConfiguration<DokkaBase, DokkaBaseConfiguration> {
+        customAssets = listOf(file(rootDir.resolve("assets/logo.png")))
+        templatesDir = file(rootDir.resolve("dokka/templates"))
+        customStyleSheets = listOf(file(rootDir.resolve("dokka/styles/logo-styles.css")))
     }
 }
